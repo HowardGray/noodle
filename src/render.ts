@@ -272,16 +272,26 @@ export class Renderer {
     ctx.stroke();
     label(ctx, `ROUND ${world.round}`, w / 2, by + 27, 12, "rgba(255,255,255,0.92)");
 
-    const board = [...world.snakes].sort((a, b) => b.segments - a.segments).slice(0, 5);
+    // Always show yourself. Bots start bigger than you do, so a plain top five
+    // leaves you off the board for the part of the round you most want feedback on.
+    const ranked = [...world.snakes].sort((a, b) => b.segments - a.segments);
+    const ROWS = 5;
+    let board = ranked.slice(0, ROWS).map((s, i) => ({ snake: s, rank: i + 1 }));
+    const missing = world.players
+      .filter((p) => !board.some((r) => r.snake === p))
+      .map((p) => ({ snake: p, rank: ranked.indexOf(p) + 1 }));
+    if (missing.length) {
+      board = [...board.slice(0, Math.max(1, ROWS - missing.length)), ...missing];
+    }
+
     const rx = w - 14;
     let ry = insets.top + 20;
-    crown(ctx, rx - 134, ry, 13);
-    for (let i = 0; i < board.length; i++) {
-      const s = board[i]!;
-      const fill = s.isPlayer ? "#FFE14D" : "#FFFFFF";
-      label(ctx, `${i + 1}`, rx - 120, ry, 13, fill, "left");
-      label(ctx, s.name, rx - 102, ry, 13, fill, "left");
-      label(ctx, String(s.segments), rx, ry, 13, fill, "right");
+    if (board[0]?.rank === 1) crown(ctx, rx - 134, ry, 13);
+    for (const row of board) {
+      const fill = row.snake.isPlayer ? "#FFE14D" : "#FFFFFF";
+      label(ctx, `${row.rank}`, rx - 120, ry, 13, fill, "left");
+      label(ctx, row.snake.name, rx - 102, ry, 13, fill, "left");
+      label(ctx, String(row.snake.segments), rx, ry, 13, fill, "right");
       ry += 19;
     }
 

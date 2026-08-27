@@ -39,10 +39,14 @@ you can hurt the other.
 ## The rules
 
 - **The wall never kills.** You reach the edge and simply cannot go further.
-- **Bumping a snake costs a little length**, plays a soft noise, and knocks you
-  the other way. Then you carry on. There is no game over screen anywhere.
+- **Bumping any part of a snake costs one of three lives**, plays a soft noise,
+  and knocks you the other way, with a second and a bit of safety after so one
+  pile-up cannot take the lot.
 - **Your length has a floor.** It can never drop below eight beads, so a bad
   patch can't leave you with nothing.
+- **The leaderboard always shows you**, pinned with your real rank even when you
+  are last. Bots start bigger than you do, so a plain top five would leave you
+  off it for the part of a round you most want feedback on.
 - **Bots that hit *your* body burst into sweets.** You can win. You cannot lose.
 - **Every sweet plays the next note up a major pentatonic scale**, so a good run
   composes a little tune and nothing you play can sound wrong.

@@ -3,7 +3,7 @@ import type { RoundConfig } from "./progress";
 
 export const ARENA_RADIUS = 1500;
 export const START_SEGMENTS = 12;
-export const START_LIVES = 5;
+export const START_LIVES = 3;
 export const MIN_SEGMENTS = 8;
 
 const BASE_SPEED = 178;
@@ -406,8 +406,9 @@ export class World {
   private headHitsBody(head: Snake, body: Snake): boolean {
     const reach = head.radius * 0.8 + body.radius * 0.85;
     const beads = body.beads();
-    // skip the first few beads so grazing a head-on pass is forgiving
-    for (let i = 3; i < beads.length; i++) {
+    // Only the bead directly under the head is skipped. Skipping more made the
+    // front of every snake a ghost you could drive straight through.
+    for (let i = 1; i < beads.length; i++) {
       const b = beads[i]!;
       if (Math.hypot(b.x - head.x, b.y - head.y) < reach) return true;
     }
