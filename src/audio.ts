@@ -89,3 +89,16 @@ export function playKill() {
     setTimeout(() => tone({ freq: base * Math.pow(2, semi / 12), dur: 0.4, gain: 0.16, type: "triangle" }), i * 70);
   });
 }
+
+/** Two soft descending notes for losing a life. Disappointed, not punishing. */
+export function playLifeLost() {
+  tone({ freq: ROOT * 1.2, dur: 0.22, gain: 0.17, type: "triangle" });
+  setTimeout(() => tone({ freq: ROOT * 0.9, dur: 0.34, gain: 0.15, type: "triangle" }), 130);
+}
+
+/** A gentle falling phrase at the end of a run. Never a buzzer. */
+export function playGameOver() {
+  [9, 7, 4, 0].forEach((semi, i) => {
+    setTimeout(() => tone({ freq: ROOT * Math.pow(2, semi / 12), dur: 0.5, gain: 0.16, type: "triangle" }), i * 170);
+  });
+}

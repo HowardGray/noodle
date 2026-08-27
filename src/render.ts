@@ -1,5 +1,5 @@
 import { ARENA } from "./skins";
-import { ARENA_RADIUS, type Snake, type World } from "./world";
+import { ARENA_RADIUS, START_LIVES, type Snake, type World } from "./world";
 import { boostButton, MAX_STICK, type InputState } from "./input";
 
 const FONT = "ui-rounded, system-ui, -apple-system, 'Segoe UI', sans-serif";
@@ -33,6 +33,21 @@ function makeHexPattern(R: number): HTMLCanvasElement {
     hex(cx, cy);
   }
   return c;
+}
+
+function heart(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, filled: boolean) {
+  const h = w * 0.92;
+  ctx.beginPath();
+  ctx.moveTo(x, y + h * 0.42);
+  ctx.bezierCurveTo(x - w * 0.62, y - h * 0.06, x - w * 0.30, y - h * 0.58, x, y - h * 0.20);
+  ctx.bezierCurveTo(x + w * 0.30, y - h * 0.58, x + w * 0.62, y - h * 0.06, x, y + h * 0.42);
+  ctx.closePath();
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = ARENA.hudShadow;
+  ctx.stroke();
+  ctx.fillStyle = filled ? "#FF5D5D" : "rgba(255,255,255,0.22)";
+  ctx.fill();
 }
 
 function crown(ctx: CanvasRenderingContext2D, x: number, y: number, w: number) {
@@ -209,6 +224,10 @@ export class Renderer {
     const player = world.player;
 
     label(ctx, String(player.score), w / 2, insets.top + 34, 46, "#FFFFFF");
+
+    for (let i = 0; i < START_LIVES; i++) {
+      heart(ctx, 24 + i * 24, insets.top + 82, 17, i < world.lives);
+    }
 
     const board = [...world.snakes].sort((a, b) => b.segments - a.segments).slice(0, 5);
     const rx = w - 14;

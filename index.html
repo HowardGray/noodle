@@ -20,7 +20,17 @@
     <button id="mute" type="button" aria-label="Turn sound off">🔊</button>
     <div id="start">
       <h1>Noodle</h1>
+      <input id="name" type="text" maxlength="10" placeholder="YOUR NAME"
+             autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false"
+             aria-label="Name on your snake" />
+      <div id="tracks" aria-label="Music"></div>
       <button id="play" type="button" aria-label="Play">▶</button>
+    </div>
+    <div id="over" class="gone">
+      <p class="eyebrow">Out of lives</p>
+      <div class="final"><span id="finalscore">0</span></div>
+      <p class="best">BEST <span id="best">0</span></p>
+      <button id="again" type="button" aria-label="Play again">▶</button>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

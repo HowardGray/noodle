@@ -1,17 +1,19 @@
 import { SKINS, PLAYER_SKIN, PELLET_COLOURS, BOT_NAMES, type Skin } from "./skins";
 
 export const ARENA_RADIUS = 1500;
-export const BOT_COUNT = 9;
+export const BOT_COUNT = 12;
 export const START_SEGMENTS = 12;
+export const START_LIVES = 5;
 export const MIN_SEGMENTS = 8;
 
-const BASE_SPEED = 165;
-const BOOST_SPEED = 285;
+const BASE_SPEED = 178;
+const BOOST_SPEED = 305;
 const TURN_RATE = 3.6;        // radians per second
 const BOOST_COST = 3.2;       // segments per second while boosting
 const PATH_SAMPLE = 4;        // world units between recorded path points
-const BUMP_LOSS = 5;          // segments dropped when the player bumps a snake
-const BUMP_GRACE = 800;       // ms of safety after a bump, so it never repeats
+const HUNT_RANGE = 560;       // how close a hunter has to be before it comes after you
+const LOOK_AHEAD = 150;       // how far a bot checks for something to swerve around
+const BUMP_GRACE = 1300;      // ms of safety after a hit, so one snake cannot drain every life
 
 export type Vec = { x: number; y: number };
 export type Pellet = Vec & { r: number; colour: string; value: number };
@@ -39,6 +41,8 @@ export class Snake {
   private boostDebt = 0;
   private wander = 0;
   private wanderTimer = 0;
+  /** Roughly a third of bots actively try to cut the player off. */
+  hunter = false;
 
   constructor(x: number, y: number, angle: number, skin: Skin, name: string, isPlayer = false) {
     this.x = x;
@@ -157,17 +161,43 @@ export class Snake {
       ? Math.atan2(best.y - this.y, best.x - this.x)
       : this.angle + this.wander * dt;
 
-    // nudge away from anything large just ahead
-    const aheadX = this.x + Math.cos(this.angle) * 90;
-    const aheadY = this.y + Math.sin(this.angle) * 90;
-    outer: for (const other of others) {
+    // Hunters steer at where the player is going, not where they are.
+    const player = others.find((o) => o.isPlayer);
+    if (this.hunter && player && !player.dead) {
+      const gap = Math.hypot(player.x - this.x, player.y - this.y);
+      if (gap < HUNT_RANGE) {
+        const lead = Math.min(180, gap * 0.55);
+        const aimX = player.x + Math.cos(player.angle) * lead;
+        const aimY = player.y + Math.sin(player.angle) * lead;
+        desired = Math.atan2(aimY - this.y, aimX - this.x);
+        this.boosting = gap < HUNT_RANGE * 0.45;
+      }
+    }
+
+    // Swerve smoothly round the nearest body ahead rather than jerking randomly,
+    // so a bot has to be genuinely out-manoeuvred rather than walking into you.
+    const aheadX = this.x + Math.cos(this.angle) * LOOK_AHEAD;
+    const aheadY = this.y + Math.sin(this.angle) * LOOK_AHEAD;
+    let threat: Vec | null = null;
+    let threatD = Infinity;
+    for (const other of others) {
       if (other === this || other.dead) continue;
-      for (const b of other.beads()) {
-        if (Math.hypot(b.x - aheadX, b.y - aheadY) < other.radius + this.radius + 14) {
-          desired = this.angle + (Math.random() < 0.5 ? 1 : -1) * 1.3;
-          break outer;
+      const beads = other.beads();
+      for (let i = 0; i < beads.length; i += 2) {
+        const b = beads[i]!;
+        const d = Math.hypot(b.x - aheadX, b.y - aheadY);
+        if (d < threatD && d < other.radius + this.radius + 40) {
+          threatD = d;
+          threat = b;
         }
       }
+    }
+    if (threat) {
+      const away = Math.atan2(this.y - threat.y, this.x - threat.x);
+      let turn = away - this.angle;
+      while (turn > Math.PI) turn -= Math.PI * 2;
+      while (turn < -Math.PI) turn += Math.PI * 2;
+      desired = this.angle + (turn >= 0 ? 1 : -1) * 1.15;
     }
 
     if (Math.hypot(this.x, this.y) > ARENA_RADIUS - 220) {
@@ -179,17 +209,20 @@ export class Snake {
 
 export type WorldEvents = {
   onEat: (snake: Snake) => void;
-  onBump: () => void;
+  onHit: (livesLeft: number) => void;
   onKill: () => void;
+  onGameOver: (score: number) => void;
 };
 
 export class World {
   player: Snake;
   bots: Snake[] = [];
   pellets: Pellet[] = [];
+  lives = START_LIVES;
+  over = false;
 
-  constructor(private events: WorldEvents) {
-    this.player = new Snake(0, 0, 0, PLAYER_SKIN, "YOU", true);
+  constructor(private events: WorldEvents, public playerName = "YOU") {
+    this.player = new Snake(0, 0, 0, PLAYER_SKIN, playerName, true);
     this.reset();
   }
 
@@ -198,9 +231,11 @@ export class World {
   }
 
   reset() {
-    this.player = new Snake(0, 0, 0, PLAYER_SKIN, "YOU", true);
+    this.player = new Snake(0, 0, 0, PLAYER_SKIN, this.playerName, true);
     this.bots = [];
     this.pellets = [];
+    this.lives = START_LIVES;
+    this.over = false;
     for (let i = 0; i < BOT_COUNT; i++) this.spawnBot();
     for (let i = 0; i < 380; i++) this.spawnPellet();
   }
@@ -231,10 +266,12 @@ export class World {
     const name = pool[Math.floor(Math.random() * pool.length)]!;
     const bot = new Snake(p.x, p.y, Math.random() * Math.PI * 2, skin, name);
     bot.segments = START_SEGMENTS + Math.floor(Math.random() * 30);
+    bot.hunter = Math.random() < 0.34;
     this.bots.push(bot);
   }
 
   update(dt: number, now: number) {
+    if (this.over) return;
     for (const s of this.snakes) s.update(dt, now);
     for (const s of this.snakes) s.refreshBeads();
     for (const bot of this.bots) bot.think(dt, this.pellets, this.snakes);
@@ -276,17 +313,23 @@ export class World {
     this.bots = this.bots.filter((b) => !b.dead);
 
     // The player cannot die. Bumping costs a little length and pushes you off.
-    if (now > this.player.graceUntil) {
+    if (!this.over && now > this.player.graceUntil) {
       for (const bot of this.bots) {
         if (this.headHitsBody(this.player, bot)) {
-          this.player.segments = Math.max(MIN_SEGMENTS, this.player.segments - BUMP_LOSS);
+          this.lives -= 1;
           this.player.graceUntil = now + BUMP_GRACE;
-          this.player.bumpFlash = 400;
+          this.player.bumpFlash = 500;
           this.player.angle += Math.PI * 0.6;
           this.player.targetAngle = this.player.angle;
           this.player.x -= Math.cos(this.player.angle) * 6;
           this.player.y -= Math.sin(this.player.angle) * 6;
-          this.events.onBump();
+          if (this.lives <= 0) {
+            this.lives = 0;
+            this.over = true;
+            this.events.onGameOver(this.player.score);
+          } else {
+            this.events.onHit(this.lives);
+          }
           break;
         }
       }
