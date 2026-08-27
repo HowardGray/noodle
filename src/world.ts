@@ -1,7 +1,7 @@
-import { SKINS, PLAYER_SKIN, PELLET_COLOURS, BOT_NAMES, type Skin } from "./skins";
+import { SKINS, PELLET_COLOURS, BOT_NAMES, type Skin } from "./skins";
+import type { RoundConfig } from "./progress";
 
 export const ARENA_RADIUS = 1500;
-export const BOT_COUNT = 12;
 export const START_SEGMENTS = 12;
 export const START_LIVES = 5;
 export const MIN_SEGMENTS = 8;
@@ -212,6 +212,7 @@ export type WorldEvents = {
   onHit: (livesLeft: number) => void;
   onKill: () => void;
   onGameOver: (score: number) => void;
+  onWin: (score: number) => void;
 };
 
 export class World {
@@ -220,9 +221,20 @@ export class World {
   pellets: Pellet[] = [];
   lives = START_LIVES;
   over = false;
+  won = false;
+  round = 1;
+  config: RoundConfig;
+  skin: Skin;
 
-  constructor(private events: WorldEvents, public playerName = "YOU") {
-    this.player = new Snake(0, 0, 0, PLAYER_SKIN, playerName, true);
+  constructor(
+    private events: WorldEvents,
+    config: RoundConfig,
+    skin: Skin,
+    public playerName = "YOU",
+  ) {
+    this.config = config;
+    this.skin = skin;
+    this.player = new Snake(0, 0, 0, skin, playerName, true);
     this.reset();
   }
 
@@ -230,13 +242,16 @@ export class World {
     return [this.player, ...this.bots];
   }
 
-  reset() {
-    this.player = new Snake(0, 0, 0, PLAYER_SKIN, this.playerName, true);
+  reset(config = this.config, skin = this.skin) {
+    this.config = config;
+    this.skin = skin;
+    this.player = new Snake(0, 0, 0, skin, this.playerName, true);
     this.bots = [];
     this.pellets = [];
     this.lives = START_LIVES;
     this.over = false;
-    for (let i = 0; i < BOT_COUNT; i++) this.spawnBot();
+    this.won = false;
+    for (let i = 0; i < config.bots; i++) this.spawnBot();
     for (let i = 0; i < 380; i++) this.spawnPellet();
   }
 
@@ -266,12 +281,12 @@ export class World {
     const name = pool[Math.floor(Math.random() * pool.length)]!;
     const bot = new Snake(p.x, p.y, Math.random() * Math.PI * 2, skin, name);
     bot.segments = START_SEGMENTS + Math.floor(Math.random() * 30);
-    bot.hunter = Math.random() < 0.34;
+    bot.hunter = Math.random() < this.config.hunterRate;
     this.bots.push(bot);
   }
 
   update(dt: number, now: number) {
-    if (this.over) return;
+    if (this.over || this.won) return;
     for (const s of this.snakes) s.update(dt, now);
     for (const s of this.snakes) s.refreshBeads();
     for (const bot of this.bots) bot.think(dt, this.pellets, this.snakes);
@@ -282,7 +297,7 @@ export class World {
     this.collide(now);
 
     while (this.pellets.length < 380) this.spawnPellet();
-    while (this.bots.length < BOT_COUNT) this.spawnBot();
+    while (this.bots.length < this.config.bots) this.spawnBot();
   }
 
   private eatPellets(s: Snake) {
@@ -293,7 +308,13 @@ export class World {
         this.pellets.splice(i, 1);
         s.segments += p.value;
         s.score += p.value;
-        if (s.isPlayer) this.events.onEat(s);
+        if (s.isPlayer) {
+          this.events.onEat(s);
+          if (!this.won && s.score >= this.config.target) {
+            this.won = true;
+            this.events.onWin(s.score);
+          }
+        }
       }
     }
   }
@@ -313,7 +334,7 @@ export class World {
     this.bots = this.bots.filter((b) => !b.dead);
 
     // The player cannot die. Bumping costs a little length and pushes you off.
-    if (!this.over && now > this.player.graceUntil) {
+    if (!this.over && !this.won && now > this.player.graceUntil) {
       for (const bot of this.bots) {
         if (this.headHitsBody(this.player, bot)) {
           this.lives -= 1;

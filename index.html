@@ -23,8 +23,16 @@
       <input id="name" type="text" maxlength="10" placeholder="YOUR NAME"
              autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false"
              aria-label="Name on your snake" />
+      <div id="skins" aria-label="Choose your snake"></div>
       <div id="tracks" aria-label="Music"></div>
+      <p id="roundline">ROUND 1</p>
       <button id="play" type="button" aria-label="Play">▶</button>
+    </div>
+    <div id="won" class="gone">
+      <p class="eyebrow">Round <span id="wonround">1</span> won</p>
+      <p id="wonprompt">Pick your new snake</p>
+      <div id="rewards"></div>
+      <button id="next" type="button" aria-label="Next round">▶</button>
     </div>
     <div id="over" class="gone">
       <p class="eyebrow">Out of lives</p>

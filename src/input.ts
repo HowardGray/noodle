@@ -74,13 +74,20 @@ export function attachInput(
     ArrowUp: -Math.PI / 2, ArrowDown: Math.PI / 2, ArrowLeft: Math.PI, ArrowRight: 0,
     w: -Math.PI / 2, s: Math.PI / 2, a: Math.PI, d: 0,
   };
+  const isTyping = (t: EventTarget | null) =>
+    t instanceof HTMLElement &&
+    (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+
   window.addEventListener("keydown", (e) => {
+    // W, A, S, D and space steer the snake — but not while a name is being typed.
+    if (isTyping(e.target)) return;
     onGesture();
     if (e.key === " " || e.key === "Shift") { state.boosting = true; e.preventDefault(); return; }
     const a = KEY_ANGLE[e.key];
     if (a !== undefined) { state.angle = a; e.preventDefault(); }
   });
   window.addEventListener("keyup", (e) => {
+    if (isTyping(e.target)) return;
     if (e.key === " " || e.key === "Shift") state.boosting = false;
   });
 

@@ -6,6 +6,23 @@ leaderboard with a crown on first place.
 
 One thing is different, and it is the whole point: **nothing can kill you.**
 
+## Rounds
+
+Each round has a points target. Hit it and you win the round and choose one of
+three new snakes; run out of lives and you retry the same round with everything
+you have unlocked still yours. Lives reset every round, so a loss costs one
+round rather than an evening.
+
+Targets and pressure climb together — round 1 asks for 15 sweets against 8 bots,
+round 10 asks for 60 against 16 with two thirds of them hunting. Ten rounds
+unlock all ten snakes, then it runs on with the target rising.
+
+Lose the same round three times and it quietly gets easier: fewer bots, fewer
+hunters, a lower target. Nothing on screen says so. He still won it.
+
+Skins are cosmetic. Progress, name, chosen snake and best score live in
+localStorage.
+
 ## The rules
 
 - **The wall never kills.** You reach the edge and simply cannot go further.
@@ -48,6 +65,7 @@ No framework, no engine. TypeScript, one canvas, Vite.
 | `src/input.ts` | Floating joystick, boost button, keyboard for desktop |
 | `src/audio.ts` | The pentatonic scale and the other sounds |
 | `src/skins.ts` | Snake skins, arena colours, bot names |
+| `src/progress.ts` | Saved state, round difficulty curve, skin offers |
 
 ## Putting it on an iPad or iPhone
 
@@ -86,5 +104,4 @@ commercially.
 - **Two players on one device.** The reason to build this at all — two snakes,
   one iPad, a thumb each. The world already holds multiple snakes, so this is
   mostly input and a split camera.
-- Skin picking. `src/skins.ts` has ten; the player always gets Rainbow.
 - Haptics, which iOS Safari does not offer. Would need a native wrapper.

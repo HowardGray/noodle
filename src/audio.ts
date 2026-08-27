@@ -102,3 +102,13 @@ export function playGameOver() {
     setTimeout(() => tone({ freq: ROOT * Math.pow(2, semi / 12), dur: 0.5, gain: 0.16, type: "triangle" }), i * 170);
   });
 }
+
+/** A rising flourish for winning a round. */
+export function playWin() {
+  [0, 4, 7, 12].forEach((semi, i) => {
+    setTimeout(() => {
+      tone({ freq: ROOT * Math.pow(2, semi / 12), dur: 0.5, gain: 0.18, type: "triangle" });
+      tone({ freq: ROOT * 2 * Math.pow(2, semi / 12), dur: 0.3, gain: 0.06, type: "sine" });
+    }, i * 130);
+  });
+}

@@ -35,6 +35,16 @@ function makeHexPattern(R: number): HTMLCanvasElement {
   return c;
 }
 
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
 function heart(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, filled: boolean) {
   const h = w * 0.92;
   ctx.beginPath();
@@ -228,6 +238,25 @@ export class Renderer {
     for (let i = 0; i < START_LIVES; i++) {
       heart(ctx, 24 + i * 24, insets.top + 82, 17, i < world.lives);
     }
+
+    // How far through the round you are. Fills up, then you have won.
+    const bw = Math.min(190, w * 0.44);
+    const bx = (w - bw) / 2;
+    const by = insets.top + 62;
+    const frac = Math.max(0, Math.min(1, player.score / world.config.target));
+    ctx.fillStyle = "rgba(12,46,52,0.38)";
+    roundRect(ctx, bx, by, bw, 11, 5.5);
+    ctx.fill();
+    if (frac > 0) {
+      ctx.fillStyle = frac >= 1 ? "#7CE8C8" : "#FFE14D";
+      roundRect(ctx, bx, by, Math.max(11, bw * frac), 11, 5.5);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 2;
+    roundRect(ctx, bx, by, bw, 11, 5.5);
+    ctx.stroke();
+    label(ctx, `ROUND ${world.round}`, w / 2, by + 27, 12, "rgba(255,255,255,0.92)");
 
     const board = [...world.snakes].sort((a, b) => b.segments - a.segments).slice(0, 5);
     const rx = w - 14;
