@@ -175,6 +175,9 @@ function refreshStart() {
 }
 
 function beginRound() {
+  // Whatever started the round keeps focus otherwise: a name field would
+  // swallow every steering key, and a focused button would re-fire on Enter.
+  (document.activeElement as HTMLElement | null)?.blur();
   audio.unlock();
   audio.playStart();
   const name = tidyName(nameInput.value);
@@ -263,6 +266,14 @@ function syncPlayEnabled() {
   playBtn.disabled = nameInput.value.trim().length === 0;
 }
 nameInput.addEventListener("input", syncPlayEnabled);
+
+for (const field of [nameInput, name2Input]) {
+  field.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (!playBtn.disabled) beginRound();
+  });
+}
 
 twoPlayerToggle.addEventListener("click", () => {
   const on = twoPlayerToggle.getAttribute("aria-pressed") !== "true";
