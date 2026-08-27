@@ -23,6 +23,19 @@ hunters, a lower target. Nothing on screen says so. He still won it.
 Skins are cosmetic. Progress, name, chosen snake and best score live in
 localStorage.
 
+## Two players, one screen
+
+Optional, off by default — flip the toggle on the start screen and a second
+name field appears. **Desktop for now:** player one steers with the arrow keys
+and boosts with space, player two steers with WASD and boosts with left shift.
+Touch still drives player one only; two thumbs on one piece of glass is the next
+step.
+
+It is co-operative. One camera pulls back far enough to hold both snakes, a soft
+leash stops either of you wandering out of frame, and you share the lives and
+the sweet count — so you win the round together or lose it together. Neither of
+you can hurt the other.
+
 ## The rules
 
 - **The wall never kills.** You reach the edge and simply cannot go further.
@@ -66,6 +79,7 @@ No framework, no engine. TypeScript, one canvas, Vite.
 | `src/audio.ts` | The pentatonic scale and the other sounds |
 | `src/skins.ts` | Snake skins, arena colours, bot names |
 | `src/progress.ts` | Saved state, round difficulty curve, skin offers |
+| `src/music.ts` | Background track loading and the picker's playback |
 
 ## Putting it on an iPad or iPhone
 
@@ -101,7 +115,9 @@ commercially.
 
 ## Not built yet
 
-- **Two players on one device.** The reason to build this at all — two snakes,
-  one iPad, a thumb each. The world already holds multiple snakes, so this is
-  mostly input and a split camera.
+- **Two players on a touchscreen.** The keyboard version works; two thumbs on
+  one iPad needs a second on-screen stick and a decision about where it lives.
+- Power-ups — magnet, shield, ghost, double sweets.
+- Boost that visibly drops mass behind you, the way Snake.io's does.
+- A snake designer, so he can build his own instead of picking from ten.
 - Haptics, which iOS Safari does not offer. Would need a native wrapper.

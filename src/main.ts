@@ -20,6 +20,8 @@ const skinRow = $("skins");
 const trackRow = $("tracks");
 const roundLine = $("roundline");
 const playBtn = $<HTMLButtonElement>("play");
+const twoPlayerToggle = $<HTMLButtonElement>("twop");
+const name2Input = $<HTMLInputElement>("name2");
 
 const wonOverlay = $("won");
 const wonRound = $("wonround");
@@ -86,7 +88,7 @@ const world = new World(
 world.round = saved.round;
 
 const renderer = new Renderer();
-const input = attachInput(canvas, () => ({ w, h, safeBottom: insets().bottom }), audio.unlock);
+const controls = attachInput(canvas, () => ({ w, h, safeBottom: insets().bottom }), audio.unlock);
 
 let started = false;
 let last = performance.now();
@@ -99,16 +101,20 @@ function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
 
-  const player = world.player;
   if (started && !world.over && !world.won) {
-    if (input.angle !== null) player.targetAngle = input.angle;
-    player.boosting = input.boosting;
+    const pads = [controls.p1, controls.p2];
+    world.players.forEach((snake, i) => {
+      const pad = pads[i];
+      if (!pad) return;
+      if (pad.angle !== null) snake.targetAngle = pad.angle;
+      snake.boosting = pad.boosting;
+    });
   } else if (!started) {
-    player.think(dt, world.pellets, world.snakes);
+    for (const p of world.players) p.think(dt, world.pellets, world.snakes);
   }
 
   world.update(dt, now);
-  renderer.draw(ctx, w, h, dpr, world, input, insets());
+  renderer.draw(ctx, w, h, dpr, world, controls.p1, insets());
   requestAnimationFrame(frame);
 }
 
@@ -173,15 +179,19 @@ function beginRound() {
   audio.playStart();
   const name = tidyName(nameInput.value);
   saved.name = name;
+  saved.name2 = tidyName(name2Input.value) === "YOU" ? "P2" : tidyName(name2Input.value);
   progress.save(saved);
   nameInput.value = name === "YOU" ? "" : name;
   syncPlayEnabled();
 
   world.playerName = name;
+  world.player2Name = tidyName(name2Input.value) === "YOU" ? "P2" : tidyName(name2Input.value);
+  world.twoPlayer = twoPlayerToggle.getAttribute("aria-pressed") === "true";
   world.round = saved.round;
   world.reset(progress.roundConfig(saved.round, saved.fails), skinByName(saved.skin));
 
-  input.angle = null;
+  controls.p1.angle = null;
+  controls.setTwoPlayer(world.twoPlayer);
   started = true;
   startOverlay.classList.add("gone");
   wonOverlay.classList.add("gone");
@@ -254,7 +264,20 @@ function syncPlayEnabled() {
 }
 nameInput.addEventListener("input", syncPlayEnabled);
 
+twoPlayerToggle.addEventListener("click", () => {
+  const on = twoPlayerToggle.getAttribute("aria-pressed") !== "true";
+  twoPlayerToggle.setAttribute("aria-pressed", String(on));
+  twoPlayerToggle.textContent = on ? "2 PLAYERS" : "1 PLAYER";
+  name2Input.classList.toggle("shown", on);
+  saved.twoPlayer = on;
+  progress.save(saved);
+});
+
 nameInput.value = saved.name === "YOU" ? "" : saved.name;
+name2Input.value = saved.name2 === "P2" ? "" : saved.name2;
+twoPlayerToggle.setAttribute("aria-pressed", String(saved.twoPlayer));
+twoPlayerToggle.textContent = saved.twoPlayer ? "2 PLAYERS" : "1 PLAYER";
+name2Input.classList.toggle("shown", saved.twoPlayer);
 syncPlayEnabled();
 bestEl.textContent = String(saved.best);
 refreshStart();
@@ -287,10 +310,10 @@ requestAnimationFrame(frame);
 if (import.meta.env.DEV) {
   (window as unknown as { __noodle: unknown }).__noodle = {
     world,
-    input,
+    controls,
     progress: () => saved,
     resetProgress: () => {
-      saved = { round: 1, unlocked: [SKINS[0]!.name], skin: SKINS[0]!.name, best: 0, name: "YOU", fails: 0 };
+      saved = { round: 1, unlocked: [SKINS[0]!.name], skin: SKINS[0]!.name, best: 0, name: "YOU", name2: "P2", twoPlayer: false, fails: 0 };
       progress.save(saved);
       refreshStart();
     },

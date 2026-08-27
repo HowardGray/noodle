@@ -11,6 +11,8 @@ export type Saved = {
   skin: string;
   best: number;
   name: string;
+  name2: string;
+  twoPlayer: boolean;
   fails: number;
 };
 
@@ -20,6 +22,8 @@ const DEFAULTS: Saved = {
   skin: SKINS[0]!.name,
   best: 0,
   name: "YOU",
+  name2: "P2",
+  twoPlayer: false,
   fails: 0,
 };
 
@@ -37,6 +41,8 @@ export function load(): Saved {
       skin: unlocked.includes(parsed.skin ?? "") ? parsed.skin! : unlocked[0]!,
       best: Math.max(0, Number(parsed.best) || 0),
       name: typeof parsed.name === "string" && parsed.name ? parsed.name : DEFAULTS.name,
+      name2: typeof parsed.name2 === "string" && parsed.name2 ? parsed.name2 : DEFAULTS.name2,
+      twoPlayer: parsed.twoPlayer === true,
       fails: Math.max(0, Number(parsed.fails) || 0),
     };
   } catch {

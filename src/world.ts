@@ -14,6 +14,8 @@ const PATH_SAMPLE = 4;        // world units between recorded path points
 const HUNT_RANGE = 560;       // how close a hunter has to be before it comes after you
 const LOOK_AHEAD = 150;       // how far a bot checks for something to swerve around
 const BUMP_GRACE = 1300;      // ms of safety after a hit, so one snake cannot drain every life
+const SHARED_GRACE = 450;     // co-op: one pile-up must not cost two lives at once
+const MAX_SEPARATION = 460;   // co-op: a soft leash so one camera can hold both
 
 export type Vec = { x: number; y: number };
 export type Pellet = Vec & { r: number; colour: string; value: number };
@@ -162,7 +164,13 @@ export class Snake {
       : this.angle + this.wander * dt;
 
     // Hunters steer at where the player is going, not where they are.
-    const player = others.find((o) => o.isPlayer);
+    let player: Snake | undefined;
+    let playerD = Infinity;
+    for (const o of others) {
+      if (!o.isPlayer || o.dead) continue;
+      const d = Math.hypot(o.x - this.x, o.y - this.y);
+      if (d < playerD) { playerD = d; player = o; }
+    }
     if (this.hunter && player && !player.dead) {
       const gap = Math.hypot(player.x - this.x, player.y - this.y);
       if (gap < HUNT_RANGE) {
@@ -217,12 +225,15 @@ export type WorldEvents = {
 
 export class World {
   player: Snake;
+  player2: Snake | null = null;
   bots: Snake[] = [];
   pellets: Pellet[] = [];
   lives = START_LIVES;
   over = false;
   won = false;
   round = 1;
+  twoPlayer = false;
+  private sharedGraceUntil = 0;
   config: RoundConfig;
   skin: Skin;
 
@@ -231,6 +242,7 @@ export class World {
     config: RoundConfig,
     skin: Skin,
     public playerName = "YOU",
+    public player2Name = "P2",
   ) {
     this.config = config;
     this.skin = skin;
@@ -238,14 +250,27 @@ export class World {
     this.reset();
   }
 
+  get players(): Snake[] {
+    return this.player2 ? [this.player, this.player2] : [this.player];
+  }
+
   get snakes(): Snake[] {
-    return [this.player, ...this.bots];
+    return [...this.players, ...this.bots];
+  }
+
+  /** Co-op counts one pile of sweets, however many of you gathered it. */
+  get score(): number {
+    return this.players.reduce((n, p) => n + p.score, 0);
   }
 
   reset(config = this.config, skin = this.skin) {
     this.config = config;
     this.skin = skin;
-    this.player = new Snake(0, 0, 0, skin, this.playerName, true);
+    this.player = new Snake(0, this.twoPlayer ? -70 : 0, 0, skin, this.playerName, true);
+    this.player2 = this.twoPlayer
+      ? new Snake(0, 70, 0, SKINS.find((k) => k.name !== skin.name) ?? skin, this.player2Name, true)
+      : null;
+    this.sharedGraceUntil = 0;
     this.bots = [];
     this.pellets = [];
     this.lives = START_LIVES;
@@ -291,13 +316,31 @@ export class World {
     for (const s of this.snakes) s.refreshBeads();
     for (const bot of this.bots) bot.think(dt, this.pellets, this.snakes);
 
-    this.eatPellets(this.player);
+    for (const p of this.players) this.eatPellets(p);
     for (const bot of this.bots) this.eatPellets(bot);
 
+    this.leash();
     this.collide(now);
 
     while (this.pellets.length < 380) this.spawnPellet();
     while (this.bots.length < this.config.bots) this.spawnBot();
+  }
+
+  /** Keep both players inside one camera without ever taking control away. */
+  private leash() {
+    const [a, b] = this.players;
+    if (!a || !b) return;
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const d = Math.hypot(dx, dy);
+    if (d <= MAX_SEPARATION || d === 0) return;
+    const pull = (d - MAX_SEPARATION) / 2;
+    const ux = dx / d;
+    const uy = dy / d;
+    a.x += ux * pull;
+    a.y += uy * pull;
+    b.x -= ux * pull;
+    b.y -= uy * pull;
   }
 
   private eatPellets(s: Snake) {
@@ -310,9 +353,9 @@ export class World {
         s.score += p.value;
         if (s.isPlayer) {
           this.events.onEat(s);
-          if (!this.won && s.score >= this.config.target) {
+          if (!this.won && this.score >= this.config.target) {
             this.won = true;
-            this.events.onWin(s.score);
+            this.events.onWin(this.score);
           }
         }
       }
@@ -333,26 +376,29 @@ export class World {
     }
     this.bots = this.bots.filter((b) => !b.dead);
 
-    // The player cannot die. Bumping costs a little length and pushes you off.
-    if (!this.over && !this.won && now > this.player.graceUntil) {
-      for (const bot of this.bots) {
-        if (this.headHitsBody(this.player, bot)) {
-          this.lives -= 1;
-          this.player.graceUntil = now + BUMP_GRACE;
-          this.player.bumpFlash = 500;
-          this.player.angle += Math.PI * 0.6;
-          this.player.targetAngle = this.player.angle;
-          this.player.x -= Math.cos(this.player.angle) * 6;
-          this.player.y -= Math.sin(this.player.angle) * 6;
-          if (this.lives <= 0) {
-            this.lives = 0;
-            this.over = true;
-            this.events.onGameOver(this.player.score);
-          } else {
-            this.events.onHit(this.lives);
-          }
-          break;
+    // Players cannot die. A hit costs one shared life and bounces you off.
+    if (this.over || this.won) return;
+    for (const me of this.players) {
+      if (now <= me.graceUntil || now <= this.sharedGraceUntil) continue;
+      const others = this.snakes.filter((s) => s !== me);
+      for (const other of others) {
+        if (!this.headHitsBody(me, other)) continue;
+        this.lives -= 1;
+        me.graceUntil = now + BUMP_GRACE;
+        this.sharedGraceUntil = now + SHARED_GRACE;
+        me.bumpFlash = 500;
+        me.angle += Math.PI * 0.6;
+        me.targetAngle = me.angle;
+        me.x -= Math.cos(me.angle) * 6;
+        me.y -= Math.sin(me.angle) * 6;
+        if (this.lives <= 0) {
+          this.lives = 0;
+          this.over = true;
+          this.events.onGameOver(this.score);
+        } else {
+          this.events.onHit(this.lives);
         }
+        break;
       }
     }
   }

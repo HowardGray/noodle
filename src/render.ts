@@ -104,11 +104,25 @@ export class Renderer {
     input: InputState,
     insets: Insets,
   ) {
-    const player = world.player;
-    const view = 640 + Math.min(560, player.segments * 2.2);
+    const players = world.players;
+    let camX = 0;
+    let camY = 0;
+    for (const p of players) {
+      camX += p.x;
+      camY += p.y;
+    }
+    camX /= players.length;
+    camY /= players.length;
+
+    let spread = 0;
+    let biggest = 0;
+    for (const p of players) {
+      spread = Math.max(spread, Math.hypot(p.x - camX, p.y - camY) * 2);
+      biggest = Math.max(biggest, p.segments);
+    }
+    // One camera holds everyone: pull back far enough to frame the pair.
+    const view = Math.max(640 + Math.min(560, biggest * 2.2), spread * 1.25 + 280);
     const scale = Math.min(w, h) / view;
-    const camX = player.x;
-    const camY = player.y;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = ARENA.fog;
@@ -154,7 +168,7 @@ export class Renderer {
     }
 
     for (const bot of world.bots) this.drawSnake(ctx, bot, left, top, right, bottom);
-    this.drawSnake(ctx, player, left, top, right, bottom);
+    for (const p of players) this.drawSnake(ctx, p, left, top, right, bottom);
 
     ctx.restore();
 
@@ -233,7 +247,7 @@ export class Renderer {
   private drawHud(ctx: CanvasRenderingContext2D, w: number, h: number, world: World, input: InputState, insets: Insets) {
     const player = world.player;
 
-    label(ctx, String(player.score), w / 2, insets.top + 34, 46, "#FFFFFF");
+    label(ctx, String(world.score), w / 2, insets.top + 34, 46, "#FFFFFF");
 
     for (let i = 0; i < START_LIVES; i++) {
       heart(ctx, 24 + i * 24, insets.top + 82, 17, i < world.lives);
@@ -243,7 +257,7 @@ export class Renderer {
     const bw = Math.min(190, w * 0.44);
     const bx = (w - bw) / 2;
     const by = insets.top + 62;
-    const frac = Math.max(0, Math.min(1, player.score / world.config.target));
+    const frac = Math.max(0, Math.min(1, world.score / world.config.target));
     ctx.fillStyle = "rgba(12,46,52,0.38)";
     roundRect(ctx, bx, by, bw, 11, 5.5);
     ctx.fill();
