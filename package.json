@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "music": "node scripts/make-music.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

@@ -59,6 +59,28 @@ install web apps.
 Audio needs one tap before it will make a sound; that is what the play button is
 for, and iOS gives no way around it.
 
+## Music
+
+Tracks are generated ahead of time and committed as files. A static site cannot
+call a music API at runtime without publishing the API key to every visitor.
+
+```bash
+ELEVENLABS_API_KEY=sk_... npm run music
+```
+
+That writes four 60-second loops into `public/music/` and rewrites
+`tracks.json`. The picker on the start screen appears only when that file lists
+at least one track, so the game ships fine with none.
+
+Costs about 3,600 credits for all four (Eleven Music bills 900 credits a minute
+from the shared pool), which fits inside a $6/month Starter plan. Prompts live at
+the top of `scripts/make-music.mjs` — edit and re-run to try different moods.
+
+One licensing note: ElevenLabs includes broad commercial use on paid plans, but
+their terms carve out film, TV and large-studio game rights as Enterprise-only.
+Fine for a game you and your son play; worth re-reading if it ever ships
+commercially.
+
 ## Not built yet
 
 - **Two players on one device.** The reason to build this at all — two snakes,
