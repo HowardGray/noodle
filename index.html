@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Noodle</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="A friendly snake arena. Eat the sweets, grow the longest, and nothing can ever kill you." />
+    <meta name="theme-color" content="#2E7F8A" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Noodle" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="icon" href="./icons/icon-192.png" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="probe"></div>
+    <button id="mute" type="button" aria-label="Turn sound off">🔊</button>
+    <div id="start">
+      <h1>Noodle</h1>
+      <button id="play" type="button" aria-label="Play">▶</button>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
